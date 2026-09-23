@@ -1,0 +1,16 @@
+name: demonstration-reprise
+max_parallel: 1
+tasks:
+  - id: preparation
+    command: python3
+    args: [scripts/once.py]
+    max_attempts: 1
+  - id: attente-interruptible
+    command: python3
+    args: [scripts/interrupt.py]
+    dependencies: [preparation]
+    max_attempts: 2
+  - id: fin
+    command: python3
+    args: [scripts/finish.py]
+    dependencies: [attente-interruptible]

@@ -1,0 +1,36 @@
+name: ventes-mensuelles
+max_parallel: 2
+tasks:
+  - id: prepare
+    command: python3
+    args: [scripts/prepare.py]
+    workdir: .
+    timeout_seconds: 10
+    max_attempts: 2
+    env:
+      KORDREL_DEMO_YEAR: "2026"
+  - id: by_region
+    command: python3
+    args: [scripts/aggregate.py]
+    dependencies: [prepare]
+    workdir: .
+    timeout_seconds: 10
+  - id: by_month
+    command: python3
+    args: [scripts/trend.py]
+    dependencies: [prepare]
+    workdir: .
+    timeout_seconds: 10
+  - id: validate
+    command: python3
+    args: [scripts/validate.py]
+    dependencies: [by_region, by_month]
+    workdir: .
+    retries: 1
+    timeout_seconds: 10
+  - id: report
+    command: python3
+    args: [scripts/report.py]
+    dependencies: [validate]
+    workdir: .
+    timeout_seconds: 10
