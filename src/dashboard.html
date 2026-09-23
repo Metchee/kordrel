@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Kordrel — Exécutions</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #20201e;
+      background: #f7f7f5;
+      font-synthesis: none;
+      --surface: #fff;
+      --canvas: #f7f7f5;
+      --ink: #20201e;
+      --muted: #62625d;
+      --line: #d9d9d4;
+      --line-soft: #e9e9e5;
+      --accent: #8b4430;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    body { margin: 0; min-width: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .skip-link { position: absolute; z-index: 20; top: -80px; left: 16px; padding: 10px 14px; background: #fff; color: var(--ink); border: 1px solid var(--ink); }
+    .skip-link:focus { top: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .app-header { height: 58px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #191918; color: #f8f8f6; border-bottom: 1px solid #343431; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 760; letter-spacing: .14em; }
+    .brand-mark { display: grid; place-items: center; width: 28px; height: 28px; color: #191918; background: #f6f6f3; font-size: 17px; font-weight: 800; letter-spacing: -.08em; padding-right: 2px; }
+    .header-meta { display: flex; align-items: center; gap: 18px; color: #cacac5; font-size: 12px; }
+    .header-meta span + span { border-left: 1px solid #595954; padding-left: 18px; }
+    .shell { display: grid; grid-template-columns: 268px minmax(0, 1fr); min-height: calc(100vh - 58px); }
+    .sidebar { min-width: 0; background: #f0f0ed; border-right: 1px solid var(--line); }
+    .sidebar-inner { position: sticky; top: 0; padding: 27px 0 24px; max-height: calc(100vh - 58px); overflow-y: auto; }
+    .sidebar-title { display: flex; align-items: center; justify-content: space-between; padding: 0 22px 18px; }
+    .eyebrow { margin: 0; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    .sidebar-count { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .run-list { display: grid; }
+    .run-item { display: grid; gap: 9px; width: 100%; min-width: 0; padding: 14px 22px 15px 19px; text-align: left; color: var(--ink); background: transparent; border: 0; border-left: 3px solid transparent; border-top: 1px solid var(--line); }
+    .run-item:hover { background: #e9e9e5; }
+    .run-item[aria-current="true"] { border-left-color: var(--accent); background: #fff; }
+    .run-name { font-size: 13px; font-weight: 680; line-height: 1.3; overflow-wrap: anywhere; }
+    .run-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--muted); font-size: 11px; }
+    .run-date { white-space: nowrap; }
+    .mobile-run-picker { display: none; }
+    .sidebar-message { padding: 6px 22px 20px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .main { min-width: 0; padding: 30px clamp(22px, 3.2vw, 50px) 60px; }
+    .main-inner { max-width: 1390px; margin: 0 auto; }
+    .page-intro { margin-bottom: 24px; }
+    .page-intro h1 { margin: 8px 0 0; font-size: clamp(28px, 2.5vw, 38px); font-weight: 660; letter-spacing: -.045em; line-height: 1.15; overflow-wrap: anywhere; }
+    .page-intro p { max-width: 580px; margin: 12px 0 0; color: var(--muted); line-height: 1.55; }
+    .overview { margin-bottom: 22px; background: var(--surface); border: 1px solid var(--line); }
+    .overview-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 25px 28px 23px; }
+    .overview h1 { margin: 7px 0 15px; font-size: clamp(27px, 2.7vw, 39px); font-weight: 670; line-height: 1.13; letter-spacing: -.045em; overflow-wrap: anywhere; }
+    .overview-status { flex: none; margin-top: 2px; }
+    .run-facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+    .run-facts li { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+    .run-facts strong { color: var(--ink); font-weight: 570; }
+    .run-id { overflow-wrap: anywhere; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+    .summary-cell { min-width: 0; padding: 15px 25px 16px; border-right: 1px solid var(--line); }
+    .summary-cell:last-child { border-right: 0; }
+    .summary-number { display: block; font-size: 24px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+    .summary-label { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .workspace { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(350px, 1fr); gap: 18px; align-items: start; }
+    .column { display: grid; gap: 18px; min-width: 0; }
+    .section { min-width: 0; background: var(--surface); border: 1px solid var(--line); }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 18px 21px 16px; border-bottom: 1px solid var(--line); }
+    .section-head h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.015em; }
+    .section-hint { margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
+    .task-head, .task-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(105px, .9fr) 88px 56px; align-items: center; column-gap: 16px; }
+    .task-head { padding: 11px 20px; border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: 11px; font-weight: 650; }
+    .task-row { width: 100%; min-height: 67px; padding: 10px 20px; border: 0; border-bottom: 1px solid var(--line-soft); border-left: 3px solid transparent; background: #fff; color: var(--ink); text-align: left; }
+    .task-row:last-child { border-bottom: 0; }
+    .task-row:hover { background: #f8f8f6; }
+    .task-row[aria-pressed="true"] { background: #f7f4f1; border-left-color: var(--accent); }
+    .task-name { display: block; font: 600 12px/1.35 var(--mono); overflow-wrap: anywhere; }
+    .task-deps { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+    .task-error { display: block; margin-top: 5px; color: var(--ink); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+    .task-number { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-label { display: none; }
+    .status { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: var(--ink); font-size: 11px; font-weight: 650; line-height: 1.2; white-space: nowrap; }
+    .status-icon { display: inline-grid; place-items: center; flex: none; width: 17px; height: 17px; border: 1px solid #858580; border-radius: 50%; font-size: 12px; font-weight: 650; line-height: 1; }
+    .status-running .status-icon, .status-retrying .status-icon { color: var(--accent); border-color: var(--accent); }
+    .status-failed .status-icon, .status-blocked .status-icon { border-radius: 2px; border-color: var(--ink); }
+    .status-pending, .status-queued { color: var(--muted); }
+    .status-small { font-size: 10px; }
+    .status-small .status-icon { width: 15px; height: 15px; font-size: 10px; }
+    .graph-wrap { padding: 19px 20px 22px; }
+    .graph-note { margin: 0 0 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .dependency-map { position: relative; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); gap: 18px; overflow-x: auto; padding: 0 0 4px; }
+    .graph-stage { position: relative; z-index: 1; min-width: 120px; }
+    .stage-label { display: block; margin: 0 0 9px; color: var(--muted); font-size: 11px; font-weight: 670; font-variant-numeric: tabular-nums; }
+    .stage-nodes { display: grid; gap: 10px; }
+    .graph-node { display: block; width: 100%; min-height: 77px; padding: 10px 11px; text-align: left; color: var(--ink); background: #fafaf9; border: 1px solid var(--line); }
+    .graph-node:hover, .graph-node[aria-pressed="true"] { border-color: #8d8d88; background: #f4f4f1; }
+    .graph-node-name { display: block; margin-bottom: 8px; font: 600 11px/1.25 var(--mono); overflow-wrap: anywhere; }
+    .graph-node-deps { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; line-height: 1.3; overflow-wrap: anywhere; }
+    .graph-edges { position: absolute; top: 0; left: 0; z-index: 0; pointer-events: none; }
+    .log-tools { display: grid; grid-template-columns: minmax(120px, .9fr) minmax(130px, 1fr) auto; gap: 8px; padding: 14px 17px; border-bottom: 1px solid var(--line); }
+    .field, .action { min-height: 34px; min-width: 0; padding: 6px 9px; border: 1px solid #c9c9c3; border-radius: 0; background: #fff; color: var(--ink); font-size: 12px; }
+    .field::placeholder { color: #777771; }
+    .action { padding-inline: 11px; font-weight: 610; white-space: nowrap; }
+    .action:hover { border-color: var(--ink); background: #f3f3f0; }
+    .log-surface { background: #1e1e1d; color: #e9e9e6; }
+    .log-meta { display: flex; justify-content: space-between; gap: 10px; padding: 9px 17px; color: #bebeba; border-bottom: 1px solid #41413d; font-size: 11px; }
+    .log-lines { display: block; min-height: 262px; max-height: 470px; overflow: auto; margin: 0; padding: 15px 17px 19px; font: 12px/1.65 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+    .log-empty { min-height: 160px; padding: 21px 17px; color: #c5c5c0; font-size: 12px; line-height: 1.5; }
+    .copy-feedback { display: block; min-height: 20px; padding: 7px 17px 0; color: var(--muted); font-size: 11px; }
+    .attempt-list { margin: 0; padding: 0; list-style: none; }
+    .attempt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; padding: 12px 19px; border-bottom: 1px solid var(--line-soft); }
+    .attempt:last-child { border-bottom: 0; }
+    .attempt-name { font: 600 11px var(--mono); overflow-wrap: anywhere; }
+    .attempt-time { color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
+    .attempt-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
+    .attempt-error { color: var(--ink); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+    .empty-panel { padding: 26px 21px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .empty-panel strong { display: block; margin-bottom: 5px; color: var(--ink); font-size: 14px; }
+    .empty-panel code { font: 12px var(--mono); color: var(--ink); }
+    .retry-button { margin-top: 14px; padding: 7px 12px; border: 1px solid var(--ink); background: #fff; color: var(--ink); font-size: 12px; }
+    .retry-button:hover { background: #ededeb; }
+    .connection { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    .connection::before { content: ""; width: 6px; height: 6px; border: 1px solid currentColor; border-radius: 50%; }
+    .connection[data-mode="live"]::before { background: currentColor; }
+    @media (max-width: 1180px) {
+      .workspace { grid-template-columns: minmax(0, 1.2fr) minmax(310px, 1fr); }
+      .task-head, .task-row { grid-template-columns: minmax(0, 1.4fr) minmax(95px, .9fr) 72px 42px; column-gap: 9px; }
+      .log-tools { grid-template-columns: 1fr 1fr; }
+      .log-tools .action { grid-column: 1 / -1; }
+    }
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .sidebar-inner { position: static; max-height: none; padding: 17px 22px 18px; }
+      .sidebar-title { padding: 0 0 9px; }
+      .run-list { display: none; }
+      .mobile-run-picker { display: block; width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #bcbcb6; background: #fff; color: var(--ink); font-size: 13px; }
+      .sidebar-message { padding: 6px 0 0; }
+      .main { padding: 24px 22px 48px; }
+    }
+    @media (max-width: 720px) {
+      .app-header { height: 52px; padding: 0 16px; }
+      .header-meta span:first-child { display: none; }
+      .header-meta span + span { border-left: 0; padding-left: 0; }
+      .sidebar-inner { padding: 14px 16px 16px; }
+      .main { padding: 20px 14px 36px; }
+      .overview-top { display: block; padding: 20px 18px; }
+      .overview-status { margin-top: 14px; }
+      .run-facts { display: grid; gap: 5px; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-cell { padding: 13px 18px; border-bottom: 1px solid var(--line); }
+      .summary-cell:nth-child(2) { border-right: 0; }
+      .summary-cell:nth-child(n+3) { border-bottom: 0; }
+      .workspace { display: flex; flex-direction: column; gap: 16px; }
+      .column { display: contents; }
+      .tasks-section { order: 1; }
+      .logs-section { order: 2; }
+      .attempts-section { order: 3; }
+      .graph-section { order: 4; }
+      .workspace > .section, .workspace .section { width: 100%; }
+      .section-head { padding: 16px; }
+      .task-head { display: none; }
+      .task-row { grid-template-columns: minmax(0, 1fr) auto; gap: 7px 12px; padding: 13px 14px; }
+      .task-row .task-identity { grid-column: 1; grid-row: 1; }
+      .task-row .task-state { grid-column: 2; grid-row: 1; }
+      .task-row .task-duration { grid-column: 1; grid-row: 2; }
+      .task-row .task-attempts { grid-column: 2; grid-row: 2; text-align: right; }
+      .mobile-label { display: inline; color: var(--muted); font-size: 11px; }
+      .task-number { font-size: 11px; }
+      .dependency-map { display: grid; grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); gap: 14px; overflow: visible; }
+      .graph-stage { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; min-width: 0; }
+      .graph-stage + .graph-stage::before { content: ""; position: absolute; left: 12px; top: -14px; width: 1px; height: 14px; background: #a8a8a2; }
+      .stage-label { margin-top: 12px; }
+      .stage-nodes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .graph-node { min-height: 72px; }
+      .graph-edges { display: none; }
+      .log-tools { grid-template-columns: minmax(0, 1fr) auto; padding: 12px; }
+      .log-tools .task-filter { grid-column: 1 / -1; }
+      .log-tools .action { grid-column: 2; grid-row: 2; }
+      .log-lines { max-height: 360px; min-height: 210px; }
+    }
+    @media (max-width: 380px) {
+      .stage-nodes { grid-template-columns: minmax(0, 1fr); }
+      .status { font-size: 11px; }
+      .run-facts li { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+  <header class="app-header">
+    <div class="brand" aria-label="Kordrel"><span class="brand-mark" aria-hidden="true">K</span><span>Kordrel</span></div>
+    <div class="header-meta"><span>Moniteur de workflows locaux</span><span>Lecture seule</span></div>
+  </header>
+  <div class="shell">
+    <nav class="sidebar" aria-label="Exécutions récentes">
+      <div class="sidebar-inner">
+        <div class="sidebar-title"><h2 class="eyebrow">Exécutions</h2><span class="sidebar-count" id="run-count"></span></div>
+        <label class="sr-only" for="mobile-run-picker">Choisir une exécution</label>
+        <select class="mobile-run-picker" id="mobile-run-picker" aria-label="Choisir une exécution"><option>Chargement…</option></select>
+        <div class="run-list" id="run-list" aria-live="polite"><p class="sidebar-message">Chargement des exécutions…</p></div>
+        <div id="sidebar-feedback"></div>
+      </div>
+    </nav>
+    <main class="main" id="main" tabindex="-1">
+      <div class="main-inner" id="detail">
+        <div class="page-intro"><p class="eyebrow">Vue d’ensemble</p><h1>Chargement…</h1><p>Lecture des exécutions enregistrées.</p></div>
+      </div>
+    </main>
+  </div>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  <script>
+    const API = '/api/runs';
+    const STATES = {
+      pending: { label: 'En attente', icon: '○' },
+      queued: { label: 'Planifiée', icon: '·' },
+      running: { label: 'En cours', icon: '◐' },
+      retrying: { label: 'Nouvel essai', icon: '↻' },
+      success: { label: 'Réussie', icon: '✓' },
+      failed: { label: 'Échouée', icon: '×' },
+      blocked: { label: 'Bloquée', icon: '⊘' },
+      interrupted: { label: 'Interrompue', icon: '‖' }
+    };
+    const dateTime = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+    const shortTime = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const number = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+    const state = { selectedRun: null, selectedTask: '', runs: null, detail: null, logs: [], logError: null, source: null, refreshTimer: null, pendingDetail: false, request: 0 };
+    const byId = id => document.getElementById(id);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char]);
+    const status = (value, small = false) => {
+      const info = STATES[value] || { label: value || 'Inconnu', icon: '?' };
+      const key = STATES[value] ? value : 'pending';
+      return `<span class="status status-${key}${small ? ' status-small' : ''}"><span class="status-icon" aria-hidden="true">${info.icon}</span><span>${escapeHtml(info.label)}</span></span>`;
+    };
+    const formatDate = value => value ? dateTime.format(new Date(value)) : '—';
+    const elapsed = (start, end) => {
+      if (!start) return '—';
+      const ms = Math.max(0, (end || Date.now()) - start);
+      if (ms < 60000) return `${number.format(ms / 1000)} s`;
+      const minutes = Math.floor(ms / 60000);
+      return `${minutes} min ${Math.floor((ms % 60000) / 1000)} s`;
+    };
+    const durationHtml = (start, end) => `<span class="mono"${start && !end ? ` data-duration-start="${start}"` : ''}>${elapsed(start, end)}</span>`;
+    async function getJson(url) {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        let message = `Erreur HTTP ${response.status}`;
+        try { message = (await response.json()).error || message; } catch (_) { /* réponse non JSON */ }
+        throw new Error(message);
+      }
+      return response.json();
+    }
+    function describeError(error) { return escapeHtml(error?.message || String(error)); }
+    function emptyDetail(title, description, retry) {
+      byId('detail').innerHTML = `<div class="page-intro"><p class="eyebrow">Kordrel / Exécutions</p><h1>${escapeHtml(title)}</h1><p>${description}</p>${retry ? '<button type="button" class="retry-button" id="retry-detail">Réessayer</button>' : ''}</div>`;
+      if (retry) byId('retry-detail').addEventListener('click', () => loadDetail());
+    }
+    function renderRunList() {
+      const list = byId('run-list');
+      const picker = byId('mobile-run-picker');
+      const activeRun = document.activeElement?.dataset?.runId;
+      byId('run-count').textContent = state.runs.length ? String(state.runs.length) : '';
+      if (!state.runs.length) {
+        list.innerHTML = '<p class="sidebar-message">Aucune exécution enregistrée.</p>';
+        picker.innerHTML = '<option value="">Aucune exécution</option>';
+        picker.disabled = true;
+        emptyDetail('Aucune exécution', 'Lancez un workflow avec kordrel run pour voir ici ses tâches, tentatives et logs.');
+        return;
+      }
+      picker.disabled = false;
+      picker.innerHTML = state.runs.map(run => `<option value="${escapeHtml(run.id)}"${run.id === state.selectedRun ? ' selected' : ''}>${escapeHtml(run.name)} · ${escapeHtml(STATES[run.status]?.label || run.status)} · ${escapeHtml(formatDate(run.created_at))}</option>`).join('');
+      list.innerHTML = state.runs.map(run => `<button type="button" class="run-item" data-run-id="${escapeHtml(run.id)}" aria-current="${run.id === state.selectedRun}"><span class="run-name">${escapeHtml(run.name)}</span><span class="run-meta">${status(run.status, true)}<span class="run-date">${escapeHtml(formatDate(run.created_at))}</span></span></button>`).join('');
+      list.querySelectorAll('[data-run-id]').forEach(button => button.addEventListener('click', () => selectRun(button.dataset.runId)));
+      const focus = [...list.querySelectorAll('[data-run-id]')].find(button => button.dataset.runId === activeRun);
+      if (focus) focus.focus();
+    }
+    async function refreshRuns() {
+      try {
+        const runs = await getJson(API);
+        const changed = JSON.stringify(runs) !== JSON.stringify(state.runs);
+        state.runs = runs;
+        byId('sidebar-feedback').innerHTML = '';
+        if (state.selectedRun && !state.runs.some(run => run.id === state.selectedRun)) state.selectedRun = null;
+        if (changed) renderRunList();
+        if (!state.selectedRun && state.runs.length) selectRun(state.runs[0].id);
+      } catch (error) {
+        byId('run-list').innerHTML = `<p class="sidebar-message">Impossible de charger les exécutions.<br>${describeError(error)}<br><button type="button" class="retry-button" id="retry-runs">Réessayer</button></p>`;
+        byId('mobile-run-picker').innerHTML = '<option value="">Erreur de chargement</option>';
+        byId('mobile-run-picker').disabled = true;
+        byId('retry-runs').addEventListener('click', refreshRuns);
+        if (!state.selectedRun) emptyDetail('Connexion indisponible', 'Le serveur Kordrel ne répond pas. Réessayez dans quelques instants.');
+      }
+    }
+    function scheduleRefresh(kind) {
+      if (kind !== 'log') state.pendingDetail = true;
+      if (state.refreshTimer) return;
+      state.refreshTimer = setTimeout(async () => {
+        state.refreshTimer = null;
+        const detailChanged = state.pendingDetail;
+        state.pendingDetail = false;
+        if (detailChanged) await Promise.all([refreshRuns(), loadDetail()]);
+        else await loadLogs();
+      }, 120);
+    }
+    function connectEvents(runId) {
+      if (state.source) state.source.close();
+      const source = new EventSource(`${API}/${encodeURIComponent(runId)}/events`);
+      state.source = source;
+      source.onopen = () => setConnection('live', 'En direct');
+      source.onerror = () => setConnection('retry', 'Reconnexion…');
+      for (const kind of ['run', 'task', 'attempt', 'log']) source.addEventListener(kind, () => scheduleRefresh(kind));
+    }
+    function setConnection(mode, label) {
+      const element = byId('connection');
+      if (element) { element.dataset.mode = mode; element.textContent = label; }
+    }
+    function selectRun(id) {
+      if (!id || id === state.selectedRun) return;
+      state.selectedRun = id;
+      state.selectedTask = '';
+      state.detail = null;
+      state.logs = [];
+      state.logError = null;
+      state.request++;
+      renderRunList();
+      byId('detail').innerHTML = '<div class="page-intro"><p class="eyebrow">Kordrel / Exécution</p><h1>Chargement…</h1><p>Lecture des tâches et du journal.</p></div>';
+      loadDetail();
+      connectEvents(id);
+    }
+    async function loadDetail() {
+      if (!state.selectedRun) return;
+      const runId = state.selectedRun;
+      const request = ++state.request;
+      const [detail, logs] = await Promise.allSettled([
+        getJson(`${API}/${encodeURIComponent(runId)}`),
+        getJson(`${API}/${encodeURIComponent(runId)}/logs`)
+      ]);
+      if (runId !== state.selectedRun || request !== state.request) return;
+      if (detail.status === 'rejected') {
+        emptyDetail('Exécution indisponible', `Impossible de charger cette exécution : ${describeError(detail.reason)}`, true);
+        return;
+      }
+      if (state.detail && state.detail.status !== detail.value.status) byId('announcement').textContent = `Exécution ${detail.value.name} : ${STATES[detail.value.status]?.label || detail.value.status}`;
+      state.detail = detail.value;
+      state.logs = logs.status === 'fulfilled' ? logs.value : [];
+      state.logError = logs.status === 'rejected' ? logs.reason : null;
+      renderDetail();
+    }
+    async function loadLogs() {
+      if (!state.selectedRun || !state.detail) return;
+      const runId = state.selectedRun;
+      try {
+        const logs = await getJson(`${API}/${encodeURIComponent(runId)}/logs`);
+        if (runId !== state.selectedRun) return;
+        state.logs = logs;
+        state.logError = null;
+      } catch (error) { state.logError = error; }
+      renderLogs();
+    }
+    function layers(tasks) {
+      const done = new Set();
+      const groups = [];
+      while (done.size < tasks.length) {
+        const ready = tasks.filter(task => !done.has(task.id) && task.dependencies.every(id => done.has(id)));
+        if (!ready.length) break;
+        groups.push(ready);
+        ready.forEach(task => done.add(task.id));
+      }
+      return groups;
+    }
+    function taskRow(task, view) {
+      const selected = task.id === state.selectedTask;
+      const dependencies = task.dependencies.length ? `Après ${task.dependencies.join(', ')}` : 'Sans dépendance';
+      return `<button type="button" class="task-row" data-task-id="${escapeHtml(task.id)}" aria-pressed="${selected}">
+        <span class="task-identity"><span class="task-name">${escapeHtml(task.id)}</span><span class="task-deps">${escapeHtml(dependencies)}</span>${view.error ? `<span class="task-error">${escapeHtml(view.error)}</span>` : ''}</span>
+        <span class="task-state">${status(view.status)}</span>
+        <span class="task-duration task-number"><span class="mobile-label">Durée : </span>${durationHtml(view.started_at, view.finished_at)}</span>
+        <span class="task-attempts task-number"><span class="mobile-label">Essais : </span>${view.attempts}</span>
+      </button>`;
+    }
+    function graphNode(task, view) {
+      const dependencies = task.dependencies.length ? `Dépend de ${task.dependencies.join(', ')}` : 'Départ';
+      return `<button type="button" class="graph-node" data-node="${escapeHtml(task.id)}" data-task-id="${escapeHtml(task.id)}" aria-pressed="${task.id === state.selectedTask}"><span class="graph-node-name">${escapeHtml(task.id)}</span>${status(view.status, true)}<span class="graph-node-deps">${escapeHtml(dependencies)}</span></button>`;
+    }
+    function renderGraph(tasks, views) {
+      return layers(tasks).map((group, index) => `<div class="graph-stage"><span class="stage-label">${String(index + 1).padStart(2, '0')}</span><div class="stage-nodes">${group.map(task => graphNode(task, views[task.id])).join('')}</div></div>`).join('');
+    }
+    function drawEdges(tasks) {
+      const map = byId('dependency-map');
+      if (!map || matchMedia('(max-width: 720px)').matches) return;
+      const nodes = Object.fromEntries([...map.querySelectorAll('[data-node]')].map(node => [node.dataset.node, node]));
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('graph-edges');
+      svg.setAttribute('width', map.scrollWidth);
+      svg.setAttribute('height', map.scrollHeight);
+      const origin = map.getBoundingClientRect();
+      for (const task of tasks) for (const dependency of task.dependencies) {
+        const start = nodes[dependency]?.getBoundingClientRect();
+        const end = nodes[task.id]?.getBoundingClientRect();
+        if (!start || !end) continue;
+        const x1 = start.right - origin.left + map.scrollLeft;
+        const x2 = end.left - origin.left + map.scrollLeft;
+        const y1 = start.top + start.height / 2 - origin.top;
+        const y2 = end.top + end.height / 2 - origin.top;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        line.setAttribute('d', `M${x1} ${y1} C${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`);
+        line.setAttribute('fill', 'none');
+        line.setAttribute('stroke', '#999992');
+        line.setAttribute('stroke-width', '1.3');
+        svg.append(line);
+      }
+      map.prepend(svg);
+    }
+    function renderAttempts() {
+      const container = byId('attempt-list');
+      if (!container || !state.detail) return;
+      const attempts = state.detail.attempts.filter(item => !state.selectedTask || item.task_id === state.selectedTask);
+      byId('attempt-scope').textContent = state.selectedTask ? `Tâche : ${state.selectedTask}` : 'Toutes les tâches';
+      if (!attempts.length) { container.innerHTML = '<div class="empty-panel">Aucune tentative enregistrée pour cette sélection.</div>'; return; }
+      container.innerHTML = `<ol class="attempt-list">${attempts.map(item => `<li class="attempt"><span class="attempt-name">${escapeHtml(item.task_id)} <span aria-label="tentative">#${item.number}</span></span><span class="attempt-time">${durationHtml(item.started_at, item.finished_at)}</span><span class="attempt-status">${status(item.status, true)}${item.error ? `<span class="attempt-error">${escapeHtml(item.error)}</span>` : ''}</span></li>`).join('')}</ol>`;
+    }
+    function filteredLogs() {
+      const search = (byId('log-search')?.value || '').trim().toLocaleLowerCase('fr-FR');
+      return state.logs.filter(item => (!state.selectedTask || item.task_id === state.selectedTask) && (!search || `${item.task_id} ${item.stream} ${item.line}`.toLocaleLowerCase('fr-FR').includes(search)));
+    }
+    function logsText(items) {
+      return items.map(item => `${shortTime.format(new Date(item.created_at))}  ${item.task_id} #${item.attempt}  ${item.stream.padEnd(6)}  ${item.line}`).join('\n');
+    }
+    function renderLogs() {
+      const surface = byId('log-content');
+      if (!surface) return;
+      const old = byId('log-lines');
+      const bottom = old ? old.scrollHeight - old.scrollTop - old.clientHeight < 28 : true;
+      const scroll = old?.scrollTop || 0;
+      const items = filteredLogs();
+      byId('log-count').textContent = `${items.length} ligne${items.length > 1 ? 's' : ''}`;
+      byId('copy-logs').disabled = !items.length;
+      if (state.logError) {
+        surface.innerHTML = `<div class="log-empty">Impossible de charger les logs : ${describeError(state.logError)}<br><button type="button" class="retry-button" id="retry-logs">Réessayer</button></div>`;
+        byId('retry-logs').addEventListener('click', loadLogs);
+      } else if (!items.length) {
+        surface.innerHTML = `<div class="log-empty">${state.logs.length ? 'Aucune ligne ne correspond au filtre.' : 'Aucun log pour cette exécution pour le moment.'}</div>`;
+      } else {
+        surface.innerHTML = '<pre class="log-lines" id="log-lines" tabindex="0" aria-label="Journal des tâches"></pre>';
+        const lines = byId('log-lines');
+        lines.textContent = logsText(items);
+        lines.scrollTop = bottom ? lines.scrollHeight : scroll;
+      }
+    }
+    function bindTaskButtons() {
+      document.querySelectorAll('[data-task-id]').forEach(button => button.addEventListener('click', () => {
+        const id = button.dataset.taskId;
+        state.selectedTask = state.selectedTask === id ? '' : id;
+        renderDetail(id);
+      }));
+    }
+    function renderDetail(focusTask = '') {
+      const run = state.detail;
+      if (!run) return;
+      const views = Object.fromEntries(run.tasks.map(task => [task.id, task]));
+      const counts = { success: 0, active: 0, failed: 0, blocked: 0 };
+      for (const task of run.tasks) {
+        if (task.status === 'success') counts.success++;
+        else if (['running', 'retrying', 'queued'].includes(task.status)) counts.active++;
+        else if (task.status === 'failed') counts.failed++;
+        else if (task.status === 'blocked') counts.blocked++;
+      }
+      const oldSearch = byId('log-search')?.value || '';
+      const activeId = document.activeElement?.id;
+      byId('detail').innerHTML = `
+        <section class="overview" aria-labelledby="workflow-title">
+          <div class="overview-top"><div><p class="eyebrow">Exécution / ${escapeHtml(run.workflow.name)}</p><h1 id="workflow-title">${escapeHtml(run.name)}</h1>
+            <ul class="run-facts"><li><span>Identifiant</span><strong class="mono run-id">${escapeHtml(run.id)}</strong></li><li><span>Démarrée</span><strong>${escapeHtml(formatDate(run.started_at))}</strong></li><li><span>Parallélisme</span><strong>${run.max_parallel}</strong></li></ul>
+          </div><div class="overview-status">${status(run.status)}</div></div>
+          <div class="summary" aria-label="Résumé des tâches"><div class="summary-cell"><span class="summary-number">${counts.success}</span><span class="summary-label">Terminées</span></div><div class="summary-cell"><span class="summary-number">${counts.active}</span><span class="summary-label">Actives</span></div><div class="summary-cell"><span class="summary-number">${counts.failed}</span><span class="summary-label">Échouées</span></div><div class="summary-cell"><span class="summary-number">${counts.blocked}</span><span class="summary-label">Bloquées</span></div></div>
+        </section>
+        <div class="workspace">
+          <div class="column">
+            <section class="section tasks-section" aria-labelledby="tasks-title"><div class="section-head"><h2 id="tasks-title">Tâches</h2><p class="section-hint">${run.tasks.length} tâches · Sélectionner pour filtrer</p></div>
+              <div class="task-head" aria-hidden="true"><span>Tâche / dépendances</span><span>État</span><span>Durée</span><span>Essais</span></div>
+              <div>${run.workflow.tasks.map(task => taskRow(task, views[task.id])).join('')}</div>
+            </section>
+            <section class="section graph-section" aria-labelledby="graph-title"><div class="section-head"><h2 id="graph-title">Dépendances</h2><p class="section-hint">Ordre de lancement</p></div><div class="graph-wrap"><p class="graph-note">Chaque colonne représente une étape. Une tâche attend la réussite de ses dépendances.</p><div class="dependency-map" id="dependency-map" aria-label="Graphe des dépendances">${renderGraph(run.workflow.tasks, views)}</div></div></section>
+          </div>
+          <div class="column">
+            <section class="section logs-section" aria-labelledby="logs-title"><div class="section-head"><h2 id="logs-title">Journal</h2><span class="connection" id="connection" data-mode="${state.source?.readyState === EventSource.OPEN ? 'live' : 'retry'}">${state.source?.readyState === EventSource.OPEN ? 'En direct' : 'Connexion…'}</span></div>
+              <div class="log-tools"><label class="sr-only" for="log-filter">Filtrer les logs par tâche</label><select class="field task-filter" id="log-filter"><option value="">Toutes les tâches</option>${run.workflow.tasks.map(task => `<option value="${escapeHtml(task.id)}"${task.id === state.selectedTask ? ' selected' : ''}>${escapeHtml(task.id)}</option>`).join('')}</select><label class="sr-only" for="log-search">Chercher dans les logs</label><input class="field" id="log-search" type="search" placeholder="Chercher dans les logs" autocomplete="off"><button class="action" id="copy-logs" type="button">Copier</button></div>
+              <div class="log-surface"><div class="log-meta"><span>stdout / stderr</span><span id="log-count"></span></div><div id="log-content"></div></div><span class="copy-feedback" id="copy-feedback" role="status" aria-live="polite"></span>
+            </section>
+            <section class="section attempts-section" aria-labelledby="attempts-title"><div class="section-head"><h2 id="attempts-title">Tentatives</h2><p class="section-hint" id="attempt-scope"></p></div><div id="attempt-list"></div></section>
+          </div>
+        </div>`;
+      byId('log-search').value = oldSearch;
+      byId('log-search').addEventListener('input', renderLogs);
+      byId('log-filter').addEventListener('change', event => { state.selectedTask = event.target.value; renderDetail(); byId('log-filter').focus(); });
+      byId('copy-logs').addEventListener('click', async () => {
+        const text = logsText(filteredLogs());
+        try { await navigator.clipboard.writeText(text); byId('copy-feedback').textContent = 'Logs copiés dans le presse-papiers.'; }
+        catch (_) { byId('copy-feedback').textContent = 'Copie indisponible. Sélectionnez le texte du journal.'; }
+      });
+      bindTaskButtons();
+      renderAttempts();
+      renderLogs();
+      drawEdges(run.workflow.tasks);
+      if (focusTask) [...document.querySelectorAll('.task-row')].find(button => button.dataset.taskId === focusTask)?.focus();
+      else if (activeId && ['log-search', 'log-filter', 'copy-logs'].includes(activeId)) byId(activeId)?.focus();
+    }
+    byId('mobile-run-picker').addEventListener('change', event => selectRun(event.target.value));
+    window.addEventListener('resize', () => {
+      const map = byId('dependency-map');
+      if (!map || !state.detail) return;
+      map.querySelector('.graph-edges')?.remove();
+      drawEdges(state.detail.workflow.tasks);
+    });
+    setInterval(() => document.querySelectorAll('[data-duration-start]').forEach(element => { element.textContent = elapsed(Number(element.dataset.durationStart), null); }), 1000);
+    setInterval(refreshRuns, 5000);
+    refreshRuns();
+  </script>
+</body>
+</html>

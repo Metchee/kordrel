@@ -1,0 +1,8 @@
+/target
+/artifacts
+/.kordrel
+/.forge
+/examples/output
+*.db
+*.db-shm
+*.db-wal
